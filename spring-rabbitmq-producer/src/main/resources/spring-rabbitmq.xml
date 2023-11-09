@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       https://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/rabbit
+       http://www.springframework.org/schema/rabbit/spring-rabbit.xsd"
+>
+    <!-- 配置 引入外部属性文件-->
+    <context:property-placeholder location="classpath:rabbitmq.properties"></context:property-placeholder>
+
+    <!-- 配置ConnectionFactiry -->
+    <!-- publisher-confirms为确认模式
+         publisher-returns为退回模式
+     -->
+    <rabbit:connection-factory host="${rabbitmq.host}"
+                               port="${rabbitmq.port}"
+                               username="${rabbitmq.username}"
+                               password="${rabbitmq.password}"
+                               virtual-host="${rabbitmq.virtual-host}"
+                               id="connectionFactory"
+                               publisher-confirms="true"
+                               publisher-returns="true"
+    ></rabbit:connection-factory>
+
+    <!-- 配置RabbitAdmin对象 -->
+    <rabbit:admin connection-factory="connectionFactory"></rabbit:admin>
+    <!-- 声明简单队列 -->
+    <rabbit:queue id="simple1" name="simple_queue" auto-declare="true"></rabbit:queue>
+    <!-- 测试广播模式队列 -->
+    <rabbit:queue id="fanout" name="fanout_queue"></rabbit:queue>
+    <rabbit:queue id="fanout1" name="fanout_queue1"></rabbit:queue>
+    <!-- 测试主题模式队列 -->
+    <rabbit:queue id="topic" name="topic_queue"></rabbit:queue>
+    <rabbit:queue id="topic1" name="topic_queue1"></rabbit:queue>
+    <!-- 测试确认模式和退回模式的队列 -->
+    <rabbit:queue id="confirm" name="confirm_queue"></rabbit:queue>
+    <rabbit:queue id="confirm1" name="confirm_queue1"></rabbit:queue>
+    <!-- 死信队列 -->
+    <!--
+       死信队列：
+           1. 声明正常的队列(test_queue_dlx)和交换机(test_exchange_dlx)
+           2. 声明死信队列(queue_dlx)和死信交换机(exchange_dlx)
+           3. 正常队列绑定死信交换机
+               设置两个参数：
+                   * x-dead-letter-exchange：死信交换机名称
+                   * x-dead-letter-routing-key：发送给死信交换机的routingkey
+   -->
+
+    <!--
+        1. 声明正常的队列(test_queue_dlx)和交换机(test_exchange_dlx)
+    -->
+    <rabbit:queue name="test_queue_dlx" id="test_queue_dlx">
+        <!--3. 正常队列绑定死信交换机-->
+        <rabbit:queue-arguments>
+            <!--3.1 x-dead-letter-exchange：死信交换机名称-->
+            <entry key="x-dead-letter-exchange" value="exchange_dlx"/>
+            <!--3.2 x-dead-letter-routing-key：发送给死信交换机的routingkey-->
+            <entry key="x-dead-letter-routing-key" value="dlx.hehe"></entry>
+            <!--4.1 设置队列的过期时间 ttl-->
+            <entry key="x-message-ttl" value="10000" value-type="java.lang.Integer"/>
+            <!--4.2 设置队列的长度限制 max-length -->
+            <entry key="x-max-length" value="10" value-type="java.lang.Integer"/>
+        </rabbit:queue-arguments>
+    </rabbit:queue>
+    <!--正常交换机-->
+    <rabbit:topic-exchange name="test_exchange_dlx">
+        <rabbit:bindings>
+            <rabbit:binding pattern="test.dlx.#" queue="test_queue_dlx"></rabbit:binding>
+        </rabbit:bindings>
+    </rabbit:topic-exchange>
+    <!--
+       2. 声明死信队列(queue_dlx)和死信交换机(exchange_dlx)
+   -->
+    <rabbit:queue name="queue_dlx" id="queue_dlx"></rabbit:queue>
+    <rabbit:topic-exchange name="exchange_dlx">
+        <rabbit:bindings>
+            <rabbit:binding pattern="dlx.#" queue="queue_dlx"></rabbit:binding>
+        </rabbit:bindings>
+    </rabbit:topic-exchange>
+
+
+    <!-- 声明广播交换机 -->
+    <rabbit:fanout-exchange name="fanout_ex" id="fanoutExchange">
+        <!-- 绑定队列 -->
+        <rabbit:bindings>
+            <!-- queue为ID值 -->
+            <rabbit:binding queue="fanout"></rabbit:binding>
+            <rabbit:binding queue="fanout1"></rabbit:binding>
+        </rabbit:bindings>
+    </rabbit:fanout-exchange>
+
+    <!-- 声明主题交换机 -->
+    <rabbit:topic-exchange name="topic_ex">
+        <rabbit:bindings>
+            <!-- queue为ID值 -->
+            <rabbit:binding pattern="bj.*" queue="topic"></rabbit:binding>
+            <rabbit:binding pattern="#.bj" queue="topic1"></rabbit:binding>
+        </rabbit:bindings>
+    </rabbit:topic-exchange>
+
+    <!-- 声明定向模式交换机 -->
+    <rabbit:direct-exchange name="direct_ex">
+        <rabbit:bindings>
+            <!-- queue为ID值 -->
+            <!-- key为路由Key值 -->
+            <rabbit:binding  key="confirm" queue="confirm"></rabbit:binding>
+            <rabbit:binding  key="confirm" queue="confirm1"></rabbit:binding>
+        </rabbit:bindings>
+    </rabbit:direct-exchange>
+
+    <!-- 配置模板对象,用来发送消息 -->
+    <rabbit:template id="rabbitTemplate" connection-factory="connectionFactory"></rabbit:template>
+
+
+
+
+</beans>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/rabbit
+       http://www.springframework.org/schema/rabbit/spring-rabbit.xsd
+       http://www.springframework.org/schema/context
+       https://www.springframework.org/schema/context/spring-context.xsd"
+>
+
+    <!-- 配置 引入外部属性文件-->
+    <context:property-placeholder location="classpath:rabbitmq.properties"></context:property-placeholder>
+
+    <!-- 配置ConnectionFactiry -->
+    <rabbit:connection-factory host="${rabbitmq.host}"
+                               port="${rabbitmq.port}"
+                               username="${rabbitmq.username}"
+                               password="${rabbitmq.password}"
+                               virtual-host="${rabbitmq.virtual-host}"
+                               id="connectionFactory"
+    ></rabbit:connection-factory>
+
+    <!-- 配置监听器 -->
+    <bean id="simpleLinstner" class="com.gzc.spring.rabbitmq.listence.SimpleLinstner"/>
+    <bean id="fanoutListener1" class="com.gzc.spring.rabbitmq.listence.FanoutLinstner1"/>
+    <bean id="fanoutListener2" class="com.gzc.spring.rabbitmq.listence.FanoutLinstner2"/>
+    <bean id="topicLinstner1" class="com.gzc.spring.rabbitmq.listence.TopicLinstner1"/>
+    <bean id="topicLinstner2" class="com.gzc.spring.rabbitmq.listence.TopicLinstner1"/>
+    <bean id="AckLinser" class="com.gzc.spring.rabbitmq.listence.AckLinser"/>
+    <bean id="DllLinster" class="com.gzc.spring.rabbitmq.listence.DllLinster"/>
+
+    <!--定义监听器容器
+   acknowledge="manual"：手动签收
+   prefetch:每次拿几个
+   -->
+    <rabbit:listener-container connection-factory="connectionFactory" auto-declare="true" acknowledge="manual" prefetch="2">
+        <!-- queue-names为名字 -->
+        <rabbit:listener ref="simpleLinstner" queue-names="simple_queue"/>
+        <rabbit:listener ref="fanoutListener1" queue-names="fanout_queue"/>
+        <rabbit:listener ref="fanoutListener2" queue-names="fanout_queue1"/>
+        <rabbit:listener ref="topicLinstner1" queue-names="topic_queue"/>
+        <rabbit:listener ref="topicLinstner2" queue-names="topic_queue1"/>
+        <rabbit:listener ref="AckLinser" queue-names="confirm_queue"/>
+        <rabbit:listener ref="DllLinster" queue-names="test_queue_dlx"/>
+    </rabbit:listener-container>
+</beans>
+
+
